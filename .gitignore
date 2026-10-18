@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Large model files
+*.pt
+*.pth
+*.onnx
+
+# Datasets (if stored externally)
+datasets/
+data/
+
+# Generated output
+outputs/

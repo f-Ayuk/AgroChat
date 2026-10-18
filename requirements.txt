@@ -1,0 +1,9 @@
+Flask
+sentence-transformers
+numpy
+scikit-learn
+pytest
+gunicorn
+datasets
+torch
+pandas

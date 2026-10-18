@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+            content="Ask AgroChat questions about crops, soil, irrigation and farming.">
+    <title>AgroChat | Agriculture Q&A</title>
+    <link rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="header">
+        <a class="brand" href="/">
+            <span class="brand-icon">🌱</span>
+            <span>AgroChat</span>
+        </a>
+        <span class="status"><span></span> Agriculture assistant</span>
+    </header>
+
+    <main class="container">
+        <section class="welcome">
+            <p class="eyebrow">YOUR FARMING KNOWLEDGE PARTNER</p>
+            <h1>Grow smarter, <span>farm better.</span></h1>
+            <p>
+                Ask questions about crop production, soil health,
+                irrigation, pest management and harvesting.
+            </p>
+        </section>
+
+        <section class="chat-card" aria-label="Agriculture chatbot">
+            <div class="chat-heading">
+                <div class="avatar">🌿</div>
+                <div>
+                    <h2>Chat with AgroChat</h2>
+                    <p>Answers from an agriculture knowledge base</p>
+                </div>
+            </div>
+
+            <div id="messages" class="messages"
+                aria-live="polite" aria-label="Conversation">
+                {% if initial_question %}
+                <div class="message user">
+                    <div class="bubble">{{ initial_question }}</div>
+                </div>
+                <div class="message bot">
+                    <div class="bubble">
+                        {{ initial_response.answer }}
+                        <span class="meta">
+                            {% if initial_response.accepted %}
+                            Topic: {{ initial_response.topic }} · Similarity:
+                            {{ initial_response.similarity }}
+                            {% else %}
+                            No sufficiently relevant answer found.
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% elif initial_error %}
+                <div class="message bot">
+                    <div class="bubble">{{ initial_error }}</div>
+                </div>
+                {% else %}
+                <div class="message bot">
+                    <div class="bubble">
+                        Hello! I'm AgroChat. Ask me an agriculture
+                        question, and I'll find the closest answer
+                        in my knowledge base.
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="suggestions">
+                <form method="post" action="/">
+                <button type="submit" name="question"
+                        value="How can I improve soil fertility?"
+                        data-question="How can I improve soil fertility?">
+                    Soil fertility
+                </button>
+                </form>
+                <form method="post" action="/">
+                <button type="submit" name="question"
+                        value="Why are tomato leaves turning yellow?"
+                        data-question="Why are tomato leaves turning yellow?">
+                    Crop health
+                </button>
+                </form>
+                <form method="post" action="/">
+                <button type="submit" name="question"
+                        value="How can I conserve water on a farm?"
+                        data-question="How can I conserve water on a farm?">
+                    Water management
+                </button>
+                </form>
+            </div>
+
+            <form id="chat-form" class="input-area" method="post" action="/">
+                <label class="sr-only" for="question">
+                    Your agriculture question
+                </label>
+                <input id="question" name="question"
+                        type="text" maxlength="500"
+                        placeholder="Ask your farming question..."
+                        autocomplete="off" required>
+                <button id="send-button" type="submit">Send ↑</button>
+            </form>
+
+            <p class="disclaimer">
+                Educational information only. Confirm important crop
+                treatments with a qualified local agricultural adviser.
+            </p>
+        </section>
+
+        <footer>
+            AgroChat · Domain-specific NLP student project
+        </footer>
+    </main>
+
+    <script src="{{ url_for('static', filename='style.js') }}"
+            defer></script>
+</body>
+</html>

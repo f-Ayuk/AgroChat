@@ -1,0 +1,31 @@
+,Question,Answer,Domain
+1,How do I prepare soil for planting beans?,Remove weeds loosen the soil and ensure good drainage. Use soil testing and local recommendations to determine whether amendments are needed.,soil
+2,How can I improve soil fertility?,Use suitable organic matter and apply nutrients based on soil tests and crop requirements. Avoid excessive fertilizer application.,soil
+3,What is soil erosion?,Soil erosion is the removal of topsoil by water or wind. Cover crops contour farming and mulching can help reduce erosion.,soil
+4,Why is crop rotation important?,Crop rotation can interrupt some pest and disease cycles improve soil management and diversify nutrient demands.,soil
+5,What is compost?,Compost is decomposed organic material that can improve soil structure and contribute nutrients.,soil
+6,How often should I water tomatoes?,Maintain consistent soil moisture and water near the roots. Frequency depends on rainfall soil type temperature and plant growth.,irrigation
+7,How can I conserve water on a farm?,Mulch the soil control weeds collect rainwater where appropriate and use efficient irrigation methods.,irrigation
+8,What is drip irrigation?,Drip irrigation delivers water slowly near plant roots through emitters and can reduce water waste when properly maintained.,irrigation
+9,How do I know if a plant needs water?,Check soil moisture near the root zone and observe the crop. Wilting can also result from disease heat or root damage.,irrigation
+10,Why are tomato leaves turning yellow?,Possible causes include overwatering nutrient deficiency pests or disease. Check soil moisture and inspect the whole plant before choosing treatment.,crop_health
+11,How can I prevent fungal diseases in crops?,Use suitable resistant varieties ensure adequate spacing manage crop residues and avoid prolonged leaf wetness where possible.,crop_health
+12,What causes maize leaves to have brown spots?,Brown spots can have several causes including fungal diseases nutrient problems or physical damage. Inspect symptoms and seek local extension advice for diagnosis.,crop_health
+13,How do I identify pests on crops?,Inspect leaves stems roots and fruits for insects eggs feeding damage and unusual growth. Record symptoms and seek reliable local identification.,pest_management
+14,What is integrated pest management?,Integrated pest management combines monitoring prevention biological controls cultural practices and carefully selected pesticides when justified.,pest_management
+15,How can I control aphids?,Monitor the infestation protect beneficial insects and consider physical or biological controls. Use only locally approved treatments according to their labels when necessary.,pest_management
+16,When should I harvest maize?,Harvest when the crop has reached maturity and kernels are suitable for the intended use. Dry and store grain at a safe moisture level.,harvesting
+17,How should I store harvested beans?,Dry beans adequately clean them and store them in clean dry pest-resistant containers. Inspect stored grain regularly.,storage
+18,How can I reduce post-harvest losses?,Harvest carefully sort damaged produce use appropriate storage and transport methods and maintain suitable temperature and moisture conditions.,storage
+19,What is seed germination?,Seed germination is the process in which a viable seed begins growing under suitable moisture temperature and oxygen conditions.,seeds
+20,How deep should I plant seeds?,Planting depth depends on crop species seed size and soil conditions. Follow the recommended depth for the specific crop and variety.,seeds
+21,How do I select good seeds?,Choose suitable varieties from reliable sources and use clean viable seeds appropriate for your climate and planting season.,seeds
+22,What is organic farming?,Organic farming emphasizes ecological soil management and approved practices for fertility and pest management under applicable standards.,farming_methods
+23,What is mulching?,Mulching covers the soil with materials such as crop residues to help conserve moisture suppress weeds and protect soil.,farming_methods
+24,Why are weeds harmful to crops?,Weeds compete with crops for light water nutrients and space and can sometimes host pests or diseases.,weed_management
+25,How can I manage weeds in a vegetable garden?,Combine timely hand weeding mulching crop spacing and other locally suitable methods while protecting crop roots.,weed_management
+26,What is nitrogen fertilizer used for?,Nitrogen supports plant growth and chlorophyll formation. Apply appropriate amounts based on crop needs and local soil recommendations.,fertilizer
+27,Can too much fertilizer damage crops?,Yes excessive fertilizer can injure roots create nutrient imbalances and contribute to water pollution. Follow soil test results and application instructions.,fertilizer
+28,What is the difference between manure and compost?,Manure is animal waste often mixed with bedding while compost is decomposed organic material. Both require appropriate handling and use.,fertilizer
+29,How can farmers reduce soil compaction?,Avoid unnecessary heavy machinery on wet soil use controlled traffic and consider suitable cover crops and soil management practices.,soil
+30,What should I do if a crop is severely diseased?,Separate affected material when appropriate document symptoms and seek local agricultural extension advice before applying treatment.,crop_health
