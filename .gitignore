@@ -1,3 +1,4 @@
+
 # Secrets
 .env
 .env.*
@@ -9,15 +10,20 @@ venv/
 # Python cache
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
-# Large model files
-*.pt
-*.pth
-*.onnx
-
-# Datasets (if stored externally)
-datasets/
-data/
-
-# Generated output
+# Training checkpoints and temporary files
+checkpoints/
 outputs/
+
+# Dataset files: keep only the CSV needed by the deployed app
+datasets/
+data/*
+!data/qa_train.csv
+
+# Keep validation, test and diagnostic datasets private/untracked
+# unless you explicitly decide to publish them.
+
+# Local development files
+.DS_Store
+Thumbs.db

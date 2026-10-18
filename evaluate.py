@@ -41,9 +41,9 @@ THRESHOLDS = [0.30, 0.35, 0.40, 0.42, 0.45, 0.50, 0.55, 0.60]
 
 CONFIGS = [
     ("baseline (pretrained MiniLM)",
-     "sentence-transformers/all-MiniLM-L6-v2"),
+    "sentence-transformers/all-MiniLM-L6-v2"),
     ("fine-tuned MiniLM",
-     str(BASE_DIR / "models" / "agri-minilm")),
+    str(BASE_DIR / "models" / "agri-minilm")),
 ]
 
 
@@ -70,64 +70,71 @@ def build(embedder_path: str):
 def evaluate(model, payload, threshold: float):
     test_rows, corpus_emb = payload
 
-    # In-domain retrieval: for each test question, retrieve the closest answer
-    # in the test corpus. Correct if the retrieved answer belongs to the same row.
-    top1 = 0
-    accepted_in = 0
-    times = []
-    for r in test_rows:
-        t0 = time.perf_counter()
-        q_emb = model.encode(
-            [r["question"]], normalize_embeddings=True, convert_to_numpy=True
-        )[0]
-        scores = corpus_emb @ q_emb
-        best = int(np.argmax(scores))
-        times.append((time.perf_counter() - t0) * 1000)
+    if not test_rows:
+        raise ValueError("The test dataset is empty.")
 
-        # "Correct" = retrieved answer is the expected one.
-        if best == test_rows.index(r) or corpus[best] == r["answer"]:
-            top1 += 1
+    if len(OUT_OF_DOMAIN_TESTS) == 0:
+        raise ValueError("The out-of-domain test set is empty.")
 
-        if float(scores[best]) >= threshold:
-            accepted_in += 1
+    questions = [r["question"] for r in test_rows]
+    expected_answers = [r["answer"] for r in test_rows]
+
+    # Encode each in-domain question once.
+    t0 = time.perf_counter()
+    question_emb = model.encode(
+        questions,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    )
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    times = [elapsed_ms / len(questions)] * len(questions)
+
+    # Similarity between every question and every answer in the corpus.
+    scores_in = question_emb @ corpus_emb.T
+    best_indices = np.argmax(scores_in, axis=1)
+    best_scores = scores_in[np.arange(len(test_rows)), best_indices]
+
+    # Correct if the retrieved answer matches the expected answer.
+    top1 = sum(
+        corpus_answer == expected
+        for corpus_answer, expected in zip(
+            [test_rows[i]["answer"] for i in best_indices],
+            expected_answers,
+        )
+    )
+
+    accepted_in = int(np.sum(best_scores >= threshold))
+
+    # Encode out-of-domain questions once.
+    ood_emb = model.encode(
+        OUT_OF_DOMAIN_TESTS,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    )
+    scores_ood = ood_emb @ corpus_emb.T
+    best_ood_scores = np.max(scores_ood, axis=1)
+    rejected = int(np.sum(best_ood_scores < threshold))
 
     n = len(test_rows)
-    top1_acc = top1 / n
-    in_accept = accepted_in / n
+    n_ood = len(OUT_OF_DOMAIN_TESTS)
 
-    # Out-of-domain rejection.
-    rejected = 0
-    for q in OUT_OF_DOMAIN_TESTS:
-        q_emb = model.encode(
-            [q], normalize_embeddings=True, convert_to_numpy=True
-        )[0]
-        scores = corpus_emb @ q_emb
-        if float(np.max(scores)) < threshold:
-            rejected += 1
-    ood_rej = rejected / len(OUT_OF_DOMAIN_TESTS)
-
-    # Binary domain-detection P/R/F1.
-    y_true = [1] * n + [0] * len(OUT_OF_DOMAIN_TESTS)
-    y_pred = []
-    for r in test_rows:
-        q_emb = model.encode(
-            [r["question"]], normalize_embeddings=True, convert_to_numpy=True
-        )[0]
-        y_pred.append(int(float(np.max(corpus_emb @ q_emb)) >= threshold))
-    for q in OUT_OF_DOMAIN_TESTS:
-        q_emb = model.encode(
-            [q], normalize_embeddings=True, convert_to_numpy=True
-        )[0]
-        y_pred.append(int(float(np.max(corpus_emb @ q_emb)) >= threshold))
+    # 1 = in-domain, 0 = out-of-domain.
+    y_true = [1] * n + [0] * n_ood
+    y_pred = (
+        (best_scores >= threshold).astype(int).tolist()
+        + (best_ood_scores >= threshold).astype(int).tolist()
+    )
 
     p = precision_score(y_true, y_pred, zero_division=0)
     r = recall_score(y_true, y_pred, zero_division=0)
     f = f1_score(y_true, y_pred, zero_division=0)
 
     return {
-        "top1_accuracy": round(top1_acc, 4),
-        "in_domain_acceptance": round(in_accept, 4),
-        "ood_rejection_rate": round(ood_rej, 4),
+        "top1_accuracy": round(top1 / n, 4),
+        "in_domain_acceptance": round(accepted_in / n, 4),
+        "ood_rejection_rate": round(rejected / n_ood, 4),
         "precision": round(p, 4),
         "recall": round(r, 4),
         "f1": round(f, 4),
