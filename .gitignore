@@ -21,6 +21,10 @@ datasets/
 data/*
 !data/qa_train.csv
 
+# Ignore large model files
+models/agri-minilm/model.safetensors
+*.safetensors
+
 # Keep validation, test and diagnostic datasets private/untracked
 # unless you explicitly decide to publish them.
 
