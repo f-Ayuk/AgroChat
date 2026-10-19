@@ -98,13 +98,16 @@ with st.container(border=True):
                 selected_question = question
 
     with st.form("chat_form", clear_on_submit=True):
-        question_input = st.text_input(
-            "Your agriculture question",
-            max_chars=500,
-            placeholder="Ask your farming question...",
-            label_visibility="collapsed",
-        )
-        submitted = st.form_submit_button("Send ↑", use_container_width=True)
+        input_column, submit_column = st.columns([5, 1], vertical_alignment="center")
+        with input_column:
+            question_input = st.text_input(
+                "Your agriculture question",
+                max_chars=500,
+                placeholder="Ask your farming question...",
+                label_visibility="collapsed",
+            )
+        with submit_column:
+            submitted = st.form_submit_button("Send ↑", use_container_width=True)
 
     st.caption(
         "Educational information only. Confirm important crop treatments "
@@ -129,7 +132,6 @@ if selected_question or submitted:
                 "accepted": result["accepted"],
             }
         )
-        st.rerun()
         st.rerun()
 
 st.markdown(
