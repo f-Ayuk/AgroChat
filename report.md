@@ -65,7 +65,7 @@ Two configurations were compared across thresholds 0.30 to 0.60:
 
 ## 8. Deployment
 
-The application is a Streamlit app deployed on **Streamlit Community Cloud**. Its fine-tuned sentence embedder is stored separately in a model repository and loaded by repository ID from the app's secrets. The model weights are kept out of the application source repository to reduce its size. If no fine-tuned model is configured, the app uses the pretrained MiniLM embedder.
+The application is a Streamlit app deployed on **Streamlit Community Cloud** from the GitHub repository. The knowledge base and fine-tuned sentence embedder, including its weights, are stored with the application in that repository. The app loads the local fine-tuned model without requiring a separate model repository or a model download at runtime.
 
 The web interface provides a question form and retains the conversation in the current Streamlit session. Responses show the similarity score; the Flask API and `/api/health` endpoint remain available when running the Flask application directly.
 

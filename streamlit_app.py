@@ -8,7 +8,7 @@ st.set_page_config(page_title="AgroChat", page_icon="🌱")
 st.title("AgroChat")
 st.caption("Ask an agriculture-related question.")
 
-for setting in ("EMBEDDER_PATH", "HF_TOKEN", "SIMILARITY_THRESHOLD"):
+for setting in ("EMBEDDER_PATH", "SIMILARITY_THRESHOLD"):
     try:
         value = st.secrets.get(setting)
     except StreamlitSecretNotFoundError:

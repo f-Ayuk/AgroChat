@@ -28,21 +28,29 @@ def test_health(client):
     assert isinstance(data["similarity_threshold"], (int, float))
 
 
-def test_configured_model_repository_is_loaded(monkeypatch):
+def test_configured_local_model_path_is_loaded(monkeypatch):
     loaded = {}
+    model_path = app_module.BASE_DIR / "models" / "agri-minilm"
 
     def fake_sentence_transformer(model_name):
         loaded["model_name"] = model_name
         return object()
 
-    monkeypatch.setenv("EMBEDDER_PATH", "example-account/agri-minilm")
+    monkeypatch.setenv("EMBEDDER_PATH", "models/agri-minilm")
     monkeypatch.setattr(app_module, "SentenceTransformer", fake_sentence_transformer)
 
     model, tag = app_module._resolve_embedder()
 
     assert model is not None
-    assert loaded["model_name"] == "example-account/agri-minilm"
-    assert tag == "configured:example-account/agri-minilm"
+    assert loaded["model_name"] == str(model_path)
+    assert tag == f"finetuned:{model_path}"
+
+
+def test_configured_missing_model_path_fails(monkeypatch):
+    monkeypatch.setenv("EMBEDDER_PATH", "models/missing-model")
+
+    with pytest.raises(FileNotFoundError, match="Configured embedder directory not found"):
+        app_module._resolve_embedder()
 
 
 def test_chat_page_loads_script(client):

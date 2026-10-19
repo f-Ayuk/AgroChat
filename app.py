@@ -46,9 +46,16 @@ QUESTIONS = [r["question"] for r in knowledge]
 def _resolve_embedder() -> tuple[SentenceTransformer, str]:
     configured_model = os.getenv("EMBEDDER_PATH")
     if configured_model:
+        model_path = Path(configured_model)
+        if not model_path.is_absolute():
+            model_path = BASE_DIR / model_path
+        if not model_path.is_dir():
+            raise FileNotFoundError(
+                f"Configured embedder directory not found: {model_path}"
+            )
         return (
-            SentenceTransformer(configured_model),
-            f"configured:{configured_model}",
+            SentenceTransformer(str(model_path)),
+            f"finetuned:{model_path}",
         )
 
     model_path = Path(MODEL_NAME)

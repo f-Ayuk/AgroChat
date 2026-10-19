@@ -21,10 +21,6 @@ datasets/
 data/*
 !data/qa_train.csv
 
-# Keep large fine-tuned weights out of the app repository. Store them in a
-# separate model repository and configure EMBEDDER_PATH for the app.
-*.safetensors
-
 # Keep validation, test and diagnostic datasets private/untracked
 # unless you explicitly decide to publish them.
 
