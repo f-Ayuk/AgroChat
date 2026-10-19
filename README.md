@@ -1,6 +1,6 @@
 # AgroChat — Agriculture Question Answering
 
-AgroChat answers English-language questions about farming: soil, irrigation, crop health, pests, fertilisers, harvesting, storage, seeds, and weeds. It retrieves the closest answer from a curated agriculture knowledge base and uses a fallback when no result is sufficiently similar.
+AgroChat answers English-language questions about farming: soil, irrigation, crop health, pests, fertilisers, harvesting, storage, seeds, and weeds. It retrieves the closest answer from a fixed agriculture knowledge base and uses a fallback when no result is sufficiently similar.
 
 ## How it works
 
@@ -15,8 +15,13 @@ The app runs on **Streamlit Community Cloud**. The Streamlit app, knowledge-base
 
 - **Source**: `talhakk/agriculture-qa` (Apache 2.0).
 - **Size**: 25,410 question–answer pairs; English.
-- **Split**: 80% train / 10% validation / 10% test, seed 42.
-- **Content**: general agriculture and crop-specific QA for rice, wheat, tomato, okra, potato, onion, sugarcane, cotton, sunflower, and pulses.
+- **Split**: 80% train / 10% validation / 10% test, seed 42. It is a sequential random split, not stratified or deduplicated.
+- **Data quality caveat**: exact questions and exact question–answer pairs occur across splits; held-out scores are therefore exploratory and may be optimistic. The generated `category` and `crop_tag` columns are blank.
+- **Provenance caveat**: the dataset card reports English agriculture QA and an Apache-2.0 license, but this project has not independently verified how each record was collected, authored, or reviewed.
+
+The current project is English-only; it does not claim to support an African
+language. Retrieved content is educational and should be checked against
+qualified local agricultural guidance and applicable regulations.
 
 ## Run locally
 
@@ -69,6 +74,8 @@ The configured `EMBEDDER_PATH` must name a model directory inside the app's GitH
 ├── config.py               # shared model and retrieval settings
 ├── evaluate.py             # baseline vs. fine-tuned threshold evaluation
 ├── test_app.py             # application tests
+├── report.md               # capstone report
+├── TECHNICAL_DEFENSE_GUIDE.md # implementation and oral-defense notes
 ├── scripts/
 │   ├── prepare_data.py     # prepare train/validation/test CSVs
 │   └── train_embedder.py   # fine-tune the sentence embedder
@@ -87,17 +94,46 @@ function. `templates/index.html` and `static/style.js` provide the separate
 Flask page and its browser-side API calls; Streamlit does not execute that
 Flask-specific JavaScript.
 
+## Evaluation
+
+Run `py evaluate.py` to compare the pretrained baseline and fine-tuned encoder.
+The evaluator uses test questions against the training-question index used by
+the application, then checks whether the retrieved training answer exactly
+matches the test answer. It also sweeps similarity thresholds and reports
+acceptance on in-domain questions and rejection on 12 fixed, manually written
+out-of-domain examples. Exact cross-split duplicates remain, the OOD sample is
+small, exact answer matching is strict, and encoding time is not full request
+latency. Treat the results as exploratory, not as evidence of field readiness.
+The current results are in `eval_results.csv`.
+
+At threshold 0.45, the corrected test results are 22.20% top-1 exact-answer
+accuracy for the pretrained baseline and 28.02% for the fine-tuned model.
+Both reject 10 of 12 OOD items and accept 99.88% of in-domain test rows. The
+near-1 pooled F1 is dominated by the 2,541:12 in-domain/OOD imbalance and is
+not evidence of robust OOD detection.
+
 ## Limitations
 
 - **Small comparison set**: evaluation uses a held-out slice of the source dataset, not an independently curated farmer-query benchmark.
 - **Threshold is a heuristic**: a fixed cosine cut-off cannot separate every agriculture-adjacent question from every out-of-domain question.
 - **Answer style**: source answers can be generic; local agricultural guidance should be consulted.
 - **English only**: the system does not handle other languages.
+- **Unintegrated classifier script**: `scripts/train_classifier.py` expects `data/clf_train.csv` and `data/clf_val.csv`, which are not included. No trained domain classifier is used by this app.
 - **Advice disclaimer**: educational information only. Confirm pesticide and fertiliser decisions with a local agricultural adviser.
+
+## Live app
+
+**Streamlit Community Cloud URL: not yet recorded.** Add the actual public URL
+here after deployment and test it before sharing or submitting it.
 
 ## References
 
 - Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using Siamese BERT-networks. *EMNLP-IJCNLP*, 3973–3983. https://doi.org/10.18653/v1/D19-1410
-- Henderson, M., et al. (2017). Efficient natural language response suggestion for smart reply. *arXiv:1705.00652*.
-- Sanh, V., et al. (2019). DistilBERT, a distilled version of BERT. *arXiv:1910.01108*.
-- talhakk/agriculture-qa dataset. https://huggingface.co/datasets/talhakk/agriculture-qa
+- Wang, W., et al. (2020). MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained transformers. *NeurIPS 2020*.
+- Sentence Transformers. *MultipleNegativesRankingLoss documentation*. https://www.sbert.net/docs/package_reference/sentence_transformer/losses.html
+- `sentence-transformers/all-MiniLM-L6-v2` model card (pretrained-model provenance). https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+- `talhakk/agriculture-qa` dataset card (dataset source and license information). https://huggingface.co/datasets/talhakk/agriculture-qa
+
+The external links above identify project sources and are not model-hosting or
+deployment requirements. The application loads the fine-tuned weights from
+this GitHub repository.

@@ -1,17 +1,17 @@
 config,threshold,top1_accuracy,in_domain_acceptance,ood_rejection_rate,precision,recall,f1,mean_ms
-baseline (pretrained MiniLM),0.3,0.1952,0.9992,0.5833,0.998,0.9992,0.9986,2.09
-baseline (pretrained MiniLM),0.35,0.1952,0.9961,0.75,0.9988,0.9961,0.9974,2.46
-baseline (pretrained MiniLM),0.4,0.1952,0.9854,1.0,1.0,0.9854,0.9927,2.5
-baseline (pretrained MiniLM),0.42,0.1952,0.9772,1.0,1.0,0.9772,0.9885,2.5
-baseline (pretrained MiniLM),0.45,0.1952,0.9606,1.0,1.0,0.9606,0.9799,2.58
-baseline (pretrained MiniLM),0.5,0.1952,0.8926,1.0,1.0,0.8926,0.9432,2.68
-baseline (pretrained MiniLM),0.55,0.1952,0.756,1.0,1.0,0.756,0.861,2.52
-baseline (pretrained MiniLM),0.6,0.1952,0.5765,1.0,1.0,0.5765,0.7314,2.47
-fine-tuned MiniLM,0.3,0.2991,0.9996,0.3333,0.9969,0.9996,0.9982,2.5
-fine-tuned MiniLM,0.35,0.2991,0.9988,0.75,0.9988,0.9988,0.9988,2.46
-fine-tuned MiniLM,0.4,0.2991,0.9839,0.9167,0.9996,0.9839,0.9917,2.47
-fine-tuned MiniLM,0.42,0.2991,0.9728,0.9167,0.9996,0.9728,0.986,2.42
-fine-tuned MiniLM,0.45,0.2991,0.9402,1.0,1.0,0.9402,0.9692,2.43
-fine-tuned MiniLM,0.5,0.2991,0.8245,1.0,1.0,0.8245,0.9038,2.51
-fine-tuned MiniLM,0.55,0.2991,0.6663,1.0,1.0,0.6663,0.7997,2.63
-fine-tuned MiniLM,0.6,0.2991,0.4667,1.0,1.0,0.4667,0.6364,2.53
+baseline (pretrained MiniLM),0.3,0.222,1.0,0.4167,0.9973,1.0,0.9986,6.6
+baseline (pretrained MiniLM),0.35,0.222,1.0,0.6667,0.9984,1.0,0.9992,6.6
+baseline (pretrained MiniLM),0.4,0.222,1.0,0.8333,0.9992,1.0,0.9996,6.6
+baseline (pretrained MiniLM),0.42,0.222,0.9988,0.8333,0.9992,0.9988,0.999,6.6
+baseline (pretrained MiniLM),0.45,0.222,0.9988,0.8333,0.9992,0.9988,0.999,6.6
+baseline (pretrained MiniLM),0.5,0.222,0.9957,1.0,1.0,0.9957,0.9978,6.6
+baseline (pretrained MiniLM),0.55,0.222,0.9921,1.0,1.0,0.9921,0.996,6.6
+baseline (pretrained MiniLM),0.6,0.222,0.9791,1.0,1.0,0.9791,0.9895,6.6
+fine-tuned MiniLM,0.3,0.2802,1.0,0.0,0.9953,1.0,0.9976,4.53
+fine-tuned MiniLM,0.35,0.2802,1.0,0.3333,0.9969,1.0,0.9984,4.53
+fine-tuned MiniLM,0.4,0.2802,1.0,0.5833,0.998,1.0,0.999,4.53
+fine-tuned MiniLM,0.42,0.2802,1.0,0.6667,0.9984,1.0,0.9992,4.53
+fine-tuned MiniLM,0.45,0.2802,0.9988,0.8333,0.9992,0.9988,0.999,4.53
+fine-tuned MiniLM,0.5,0.2802,0.9961,1.0,1.0,0.9961,0.998,4.53
+fine-tuned MiniLM,0.55,0.2802,0.9858,1.0,1.0,0.9858,0.9929,4.53
+fine-tuned MiniLM,0.6,0.2802,0.9685,1.0,1.0,0.9685,0.984,4.53

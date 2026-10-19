@@ -9,7 +9,8 @@ Produces:
     data/qa_test.csv
     data/qa_curated_diagnostic.csv   (your original 30 pairs, for qualitative checks)
 
-The split is 80 / 10 / 10, stratified by category when possible, seed 42.
+The split is a sequential random 80 / 10 / 10 split with seed 42. It is not
+stratified or deduplicated; repeated questions and QA pairs can cross splits.
 """
 from __future__ import annotations
 

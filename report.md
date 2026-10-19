@@ -1,90 +1,213 @@
-# AgroChat A Small Agriculture Question-Answering Assistant
+# AgroChat: Agriculture Question Answering with Sentence Embeddings
+
+
+GitHub Repository: Link to the repository containing your source code, README, and project resources.
+Demo Video: Link to your 7–10 minute demonstration video.
+Live System: Link to your deployed web application, if the system has been deployed and is publicly available
+at the time of submission.
+
 
 ## 1. Abstract
 
-This project builds a chatbot that answers English-language questions about farming. It uses a public dataset of 25,410 agriculture question–answer pairs and fine-tunes a compact sentence-embedding model so that paraphrased questions retrieve the right answer. The system rejects questions that are not about agriculture. On a held-out test split, the fine-tuned model is compared with the original pretrained model across several similarity thresholds. The report analyses when the system succeeds, when it fails, and what a small, open system can realistically achieve.
+AgroChat is an English-language agriculture question-answering prototype. It
+retrieves an answer from a fixed question-and-answer collection rather than
+generating new advice. This project fine-tunes the `all-MiniLM-L6-v2` sentence
+encoder on agriculture QA pairs and compares it with the original pretrained
+model. On the test split, the fine-tuned model achieved 28.02% top-1 exact
+answer accuracy, compared with 22.20% for the baseline. These are exploratory
+results: duplicate questions cross the data splits, and the out-of-domain
+test contains only 12 questions. The system is English-only and does not
+address African-language NLP.
 
 ## 2. Introduction
 
-Farmers and smallholders need quick, trustworthy answers about soil, crops, pests, and harvesting. A general-purpose chatbot is risky because it does not know when it does not know. A **retrieval-based** assistant is safer: it answers only from a fixed knowledge base and says "I don't know" when nothing is close enough.
+Farmers and other users may need quick information about soil, crops,
+irrigation, pests, and harvesting. AgroChat tests a simple retrieval approach:
+find the stored question most similar to the user's question, then return its
+associated answer. If the similarity is below a threshold, the system returns
+a fallback message.
 
-The goal is to build a small, reproducible agriculture QA system that (a) uses real, public data, (b) fine-tunes a sentence embedder so paraphrased questions still find the right answer, and (c) measures how well it accepts in-domain questions and rejects out-of-domain ones.
+The project asks whether agriculture-specific fine-tuning improves retrieval
+over a general-purpose sentence encoder, and how the similarity threshold
+affects in-domain acceptance and out-of-domain rejection. The intended user is
+an English-speaking person seeking general farming information. The current
+system does not support an African language.
 
 ## 3. Related Work
 
-Sentence-BERT showed that a siamese Transformer can produce sentence embeddings that make similarity search thousands of times faster than comparing every pair with a full Transformer, without losing accuracy (Reimers & Gurevych, 2019). The standard way to train such a model for retrieval is `MultipleNegativesRankingLoss`, which treats every other answer in a batch as a negative example for the current question (Henderson et al., 2017). DistilBERT showed that a smaller Transformer retains most of BERT's quality while being faster and lighter (Sanh et al., 2019).
+Sentence-BERT produces sentence embeddings that can be compared efficiently
+for semantic search (Reimers & Gurevych, 2019). AgroChat uses the
+`all-MiniLM-L6-v2` sentence-transformer, a compact model based on MiniLM
+(Wang et al., 2020).
 
-Agricultural chatbot research has produced many prototypes. Most use retrieval or LLM-based pipelines, but few report out-of-domain rejection rates or provide reproducible open-data evaluations. This project addresses that gap with a single fine-tuned embedder, an explicit threshold, and a transparent evaluation on a public dataset.
+The model is fine-tuned with `MultipleNegativesRankingLoss`. For each
+question-answer pair, the paired answer is positive and other answers in the
+batch act as negatives (Sentence Transformers, n.d.). This is a common
+retrieval-training approach, though repeated answers in this dataset may
+become false negatives.
 
-## 4. Dataset
+## 4. Dataset and Data Preparation
 
-**Source**: `talhakk/agriculture-qa` on Hugging Face (Apache 2.0).
+The preparation script downloads the `train` split of
+`talhakk/agriculture-qa`. Its dataset card reports 25,410 English
+question-answer pairs and an Apache-2.0 license (talhakk, n.d.). The project
+has not independently verified how the answers were collected, who wrote
+them, or whether they were reviewed by agricultural experts.
 
-**Size**: 25,410 pairs, English. 15,000 general agriculture pairs and 10,410 crop-specific pairs covering rice, wheat, tomato, okra, potato, onion, sugarcane, cotton, sunflower, and pulses.
+Empty questions and answers are removed. The remaining data is split
+sequentially at random into 20,328 training, 2,541 validation, and 2,541 test
+pairs using seed 42. The split is not stratified or deduplicated. The
+generated `category` and `crop_tag` fields are blank.
 
-**Preparation**: empty rows removed; 80 % train / 10 % validation / 10 % test split with seed 42.
-
-**Limitations**: answers are expert-style and sometimes generic; recommendations may not fit every region or season. The dataset is English-only.
+Duplicates cross the splits: 419 test questions also appear in training, and
+325 exact question-answer pairs overlap between training and test. This weakens
+the independence of the evaluation and may inflate results. The English-only
+dataset also lacks verified local vocabulary and region-specific guidance.
+Future work should document data provenance, deduplicate before splitting,
+and collect reviewed questions from intended users.
 
 ## 5. Methodology
 
-**Baseline**: `sentence-transformers/all-MiniLM-L6-v2` used as-is.
+### Baseline and model
 
-**Proposed model**: the same model fine-tuned on the training split with `MultipleNegativesRankingLoss`. Each `(question, answer)` pair is a positive; every other answer in the same batch acts as a negative. Batch size 64, 3 epochs, learning rate handled by the `sentence-transformers` trainer with 10 % warm-up.
+The baseline is `sentence-transformers/all-MiniLM-L6-v2` without
+agriculture-specific fine-tuning. The fine-tuned model starts from the same
+encoder. Its Transformer has six layers and produces 384-dimensional sentence
+vectors. Mean pooling combines token representations; L2 normalization
+prepares the vectors for cosine similarity.
 
-**Retrieval**: at inference, the user question is embedded once, and its cosine similarity against every stored question embedding is computed. The highest-scoring question's answer is returned if the score is at least a threshold; otherwise a fallback message is shown.
+### Training
 
-**Why this design**: a bi-encoder (embed once, compare vectors) is fast enough for interactive use, unlike a cross-encoder that would need to process every stored question alongside the user query (Reimers & Gurevych, 2019).
+`scripts/train_embedder.py` trains on question-answer pairs using
+`MultipleNegativesRankingLoss`, batch size 64, and three epochs. The data
+loader shuffles the training pairs. Training uses 10% warm-up steps, and the
+validation evaluator compares validation questions with validation answers.
+
+The script does not explicitly set a learning rate or random seed, and
+`requirements.txt` does not pin the SentenceTransformers version. In the
+environment used for this evaluation, the library's default learning rate
+was 2e-5. Reproduction should set the learning rate and seeds explicitly and
+pin dependencies. Repeated answers may also act as false negatives during
+training.
+
+### Retrieval
+
+At startup, the app embeds the questions in `data/qa_train.csv`. For a new
+question, it computes an embedding and compares it with the stored vectors.
+Since the vectors are normalized, their dot product equals cosine similarity.
+The app returns the answer paired with the closest training question if the
+score is at least 0.45; otherwise, it returns a fallback. The score is a
+similarity measure, not a probability that the answer is correct. The app
+retrieves stored text and does not generate or verify advice.
 
 ## 6. Experiments and Results
 
-Two configurations were compared across thresholds 0.30 to 0.60:
+The test questions are searched against the training-question index, matching
+the application's retrieval process. Top-1 accuracy is an exact answer
+comparison: different wording is counted as incorrect even if the meaning is
+similar. In-domain acceptance is the share of test questions at or above the
+threshold. OOD rejection is the share of 12 manually written
+non-agriculture questions below it.
 
-| Config | Threshold | Top-1 accuracy | In-domain acceptance | OOD rejection | Precision | Recall | F1 | Mean ms |
-|---|---|---|---|---|---|---|---|---|
-| Baseline | 0.42 | *fill after running* | *fill* | *fill* | *fill* | *fill* | *fill* | *fill* |
-| Fine-tuned | 0.42 | *fill* | *fill* | *fill* | *fill* | *fill* | *fill* | *fill* |
-| Fine-tuned | *best threshold* | *fill* | *fill* | *fill* | *fill* | *fill* | *fill* | *fill* |
+**Table 1. Results at the app's default threshold of 0.45**
 
-> **Figure 1**: line chart of OOD rejection rate vs. in-domain acceptance rate for baseline and fine-tuned models across thresholds. *Place the chart generated from `eval_results.csv` here.*
+| Model | Top-1 exact answer | In-domain accepted | OOD rejected |
+|---|---:|---:|---:|
+| Pretrained MiniLM | 22.20% | 99.88% | 10/12 (83.33%) |
+| Fine-tuned MiniLM | 28.02% | 99.88% | 10/12 (83.33%) |
 
-**What to look for**: fine-tuning should improve top-1 accuracy on paraphrased questions. The threshold controls the trade-off: a higher threshold rejects more out-of-domain questions but also rejects more valid agriculture questions.
+Fine-tuning improved exact-answer retrieval by 5.82 percentage points. The
+threshold changes the rejection trade-off: at 0.55, both models reject all
+12 OOD questions, while in-domain acceptance falls to 99.21% for the baseline
+and 98.58% for the fine-tuned model.
+
+The reported pooled F1 is approximately 0.999, but it is dominated by the
+imbalance between 2,541 in-domain examples and 12 OOD examples. It should not
+be read as evidence of robust OOD detection. The small OOD sample is also
+coarse: one question changes rejection by 8.3 percentage points. Results are
+further limited by duplicate questions across splits. A larger, balanced,
+independently reviewed test set is needed.
 
 ## 7. Error Analysis and Discussion
 
-**Successes to report**: pick 2–3 test questions where the fine-tuned model retrieved the correct answer and the baseline did not. Show the user question, the retrieved question, and the similarity score.
+Across the 2,541 test questions, fine-tuning produced 155 exact-answer wins
+over the baseline; the baseline produced seven wins over fine-tuning. Both
+models matched 557 answers exactly, and neither matched exactly for 1,822
+questions.
 
-**Failure types to look for**:
+For “asking about control of termite in sugarcane,” fine-tuning retrieved a
+related South Asia entry and returned the exact expected answer. The baseline
+retrieved a near-duplicate question but a different answer. Its similarity
+score was higher (0.9965 versus 0.9757), showing that a higher score does not
+necessarily mean a better answer. The source answer contains treatment advice
+and is not reproduced here as a recommendation.
 
-1. **Vocabulary gap**: the user uses a local word or spelling not seen in training (e.g., "maize rust" vs. "corn leaf disease"). The fine-tuned model narrows this gap but does not eliminate it.
-2. **Threshold false acceptance**: an out-of-domain question scores above the threshold because it shares words with agriculture (e.g., "agricultural subsidies"). The system answers incorrectly instead of rejecting.
-3. **Threshold false rejection**: a valid but oddly phrased agriculture question scores below the threshold. The system says "I don't know" even though the answer exists.
-4. **Answer style mismatch**: the retrieved answer is correct but too generic or too technical for a farmer.
+For a Dinanath grass query, the baseline returned the expected answer while
+fine-tuning selected a different answer about production practices. Exact
+matching cannot determine whether those answers are semantically equivalent.
+For a sali paddy sowing-time query, both systems retrieved a related entry.
+The test answer says “May-June,” while the retrieved answer says “mid May to
+mid June”; exact matching marks both wrong despite the similar time period.
 
-**Why these happen**: a fixed cosine threshold is a blunt instrument. It cannot learn that "golf course fertiliser" is agriculture-adjacent but out of scope, while "tomato yellow leaves" is in scope. A supervised domain classifier could learn this boundary, but it requires labelled out-of-domain data and a second training procedure. That is future work.
+These examples show the limits of exact-match scoring and the difficulty of
+mapping similar questions to the right stored answer. Human review and
+independently collected farmer questions would provide a stronger evaluation.
 
 ## 8. Deployment
 
-The application is a Streamlit app deployed on **Streamlit Community Cloud** from the GitHub repository. The knowledge base and fine-tuned sentence embedder, including its weights, are stored with the application in that repository. The app loads the local fine-tuned model without requiring a separate model repository or a model download at runtime.
+The Streamlit interface calls the shared `retrieve_answer` function in
+`app.py`. It loads the knowledge-base CSV and fine-tuned model from the
+GitHub repository; no separate model service is used. A Flask interface and
+API are also included.
 
-The web interface provides a question form and retains the conversation in the current Streamlit session. Responses show the similarity score; the Flask API and `/api/health` endpoint remain available when running the Flask application directly.
+**Live app:** No public Streamlit URL has been recorded. Add and test the
+actual URL after deployment before including it in the final submission.
 
 ## 9. Limitations and Future Work
 
-- **Evaluation scope**: the test split comes from the same dataset as training. An independent set of real farmer questions would be a stronger benchmark.
-- **No trained domain classifier**: the threshold is a heuristic. A fine-tuned classifier could improve rejection, at the cost of a second model and labelled OOD data.
-- **English only**: the brief mentions African-language NLP; this project does not address it. A multilingual embedder and African-language QA data would be needed.
-- **Answer generation**: the system returns stored answers, not generated explanations. A retrieval-augmented generator could combine the retrieved answer with a short, farmer-friendly paraphrase.
-- **Local relevance**: recommendations vary by soil, climate, and regulation. A deployed system should add verified local guidance.
+- **Language:** The app and dataset are English-only. They do not meet an
+  African-language NLP objective.
+- **Data:** Source provenance and answer quality have not been independently
+  verified; duplicate pairs cross the splits.
+- **Evaluation:** The OOD set has only 12 questions, and exact matching
+  penalizes answers with different wording.
+- **Reproducibility:** Pin dependencies and set training seeds and learning
+  rate explicitly.
+- **Safety and locality:** Advice may be outdated or unsuitable for local
+  conditions. Users should consult qualified local agricultural advisers.
+- **Unintegrated code:** `scripts/train_classifier.py` expects classifier CSV
+  files that are not included. No trained classifier is used by the app.
+- **Deployment:** A working public Streamlit URL still needs to be recorded.
+
+Next steps are to improve data provenance, remove duplicate leakage, build a
+larger reviewed evaluation set, and—if required by the assignment—develop and
+evaluate the system for a selected African language.
 
 ## 10. Conclusion
 
-A fine-tuned sentence embedder plus a similarity threshold is a small, reproducible, and transparent agriculture QA system. It improves retrieval over the pretrained baseline, and its errors are easy to inspect and explain. The main open problem is out-of-domain rejection: a threshold is a blunt tool, and a learned classifier is the natural next step.
+AgroChat demonstrates a practical sentence-embedding retrieval workflow with
+fine-tuning, a pretrained baseline, threshold tests, and a web interface.
+Fine-tuning improved exact-answer retrieval on the current test split, but
+duplicate leakage, a small OOD set, and English-only data limit the
+conclusions. The system is a prototype, not a verified agricultural advice
+service or an African-language NLP solution.
 
 ## 11. References
 
-- Henderson, M., Al-Rfou, R., Strope, B., et al. (2017). Efficient natural language response suggestion for smart reply. *arXiv:1705.00652*.
-- Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using Siamese BERT-networks. *Proceedings of EMNLP-IJCNLP*, 3973–3983. https://doi.org/10.18653/v1/D19-1410
-- Sanh, V., Debut, L., Chaumond, J., & Wolf, T. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. *arXiv:1910.01108*.
-- talhakk. (2026). *agriculture-qa* [Data set]. Hugging Face. https://huggingface.co/datasets/talhakk/agriculture-qa
-- Wolf, T., et al. (2020). Transformers: State-of-the-art natural language processing. *Proceedings of EMNLP: System Demonstrations*, 38–45.
+Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using
+Siamese BERT-networks. *Proceedings of EMNLP-IJCNLP*, 3973–3983.
+https://doi.org/10.18653/v1/D19-1410
+
+Sentence Transformers. (n.d.). *MultipleNegativesRankingLoss documentation*.
+https://www.sbert.net/docs/package_reference/sentence_transformer/losses.html
+
+Sentence Transformers. (n.d.). *all-MiniLM-L6-v2 model card*.
+https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+
+talhakk. (n.d.). *Agriculture QA* [Data set]. Hugging Face.
+https://huggingface.co/datasets/talhakk/agriculture-qa
+
+Wang, W., Wei, F., Dong, L., Bao, H., Yang, N., & Zhou, M. (2020). MiniLM:
+Deep self-attention distillation for task-agnostic compression of
+pre-trained transformers. *Advances in Neural Information Processing
+Systems, 33*.

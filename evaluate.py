@@ -6,8 +6,9 @@ Run:
 Writes:
     eval_results.csv
 
-Uses the held-out test split (data/qa_test.csv) for retrieval accuracy and
-a fixed list of out-of-domain questions for rejection rate.
+Uses held-out questions from data/qa_test.csv against the same training-split
+question index used by the application, plus a fixed list of out-of-domain
+questions for rejection rate.
 """
 from __future__ import annotations
 
@@ -59,16 +60,17 @@ def build(embedder_path: str):
             print(f"[skip] {path} missing — run train_embedder.py first")
             return None, None
     model = SentenceTransformer(path)
+    train_rows = load_csv(DATA / "qa_train.csv")
     test_rows = load_csv(DATA / "qa_test.csv")
-    corpus = [r["answer"] for r in test_rows]
+    corpus = [r["question"] for r in train_rows]
     corpus_emb = model.encode(
         corpus, normalize_embeddings=True, convert_to_numpy=True
     )
-    return model, (test_rows, corpus_emb)
+    return model, (train_rows, test_rows, corpus_emb)
 
 
-def evaluate(model, payload, threshold: float):
-    test_rows, corpus_emb = payload
+def prepare_evaluation(model, payload):
+    train_rows, test_rows, corpus_emb = payload
 
     if not test_rows:
         raise ValueError("The test dataset is empty.")
@@ -88,25 +90,18 @@ def evaluate(model, payload, threshold: float):
         show_progress_bar=False,
     )
     elapsed_ms = (time.perf_counter() - t0) * 1000
-    times = [elapsed_ms / len(questions)] * len(questions)
 
-    # Similarity between every question and every answer in the corpus.
+    # Match the app: retrieve a training question, then return its answer.
     scores_in = question_emb @ corpus_emb.T
     best_indices = np.argmax(scores_in, axis=1)
     best_scores = scores_in[np.arange(len(test_rows)), best_indices]
 
-    # Correct if the retrieved answer matches the expected answer.
+    # Exact answer match is intentionally strict; paraphrases count as wrong.
     top1 = sum(
-        corpus_answer == expected
-        for corpus_answer, expected in zip(
-            [test_rows[i]["answer"] for i in best_indices],
-            expected_answers,
-        )
+        train_rows[index]["answer"] == expected
+        for index, expected in zip(best_indices, expected_answers)
     )
 
-    accepted_in = int(np.sum(best_scores >= threshold))
-
-    # Encode out-of-domain questions once.
     ood_emb = model.encode(
         OUT_OF_DOMAIN_TESTS,
         normalize_embeddings=True,
@@ -115,10 +110,28 @@ def evaluate(model, payload, threshold: float):
     )
     scores_ood = ood_emb @ corpus_emb.T
     best_ood_scores = np.max(scores_ood, axis=1)
+
+    return {
+        "top1_accuracy": top1 / len(test_rows),
+        "best_scores": best_scores,
+        "best_ood_scores": best_ood_scores,
+        "best_indices": best_indices,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
+        "mean_ms": elapsed_ms / len(test_rows),
+        "n_test": len(test_rows),
+        "n_ood": len(OUT_OF_DOMAIN_TESTS),
+    }
+
+
+def evaluate(prepared, threshold: float):
+    best_scores = prepared["best_scores"]
+    best_ood_scores = prepared["best_ood_scores"]
+    accepted_in = int(np.sum(best_scores >= threshold))
     rejected = int(np.sum(best_ood_scores < threshold))
 
-    n = len(test_rows)
-    n_ood = len(OUT_OF_DOMAIN_TESTS)
+    n = prepared["n_test"]
+    n_ood = prepared["n_ood"]
 
     # 1 = in-domain, 0 = out-of-domain.
     y_true = [1] * n + [0] * n_ood
@@ -132,25 +145,28 @@ def evaluate(model, payload, threshold: float):
     f = f1_score(y_true, y_pred, zero_division=0)
 
     return {
-        "top1_accuracy": round(top1 / n, 4),
+        "top1_accuracy": round(prepared["top1_accuracy"], 4),
         "in_domain_acceptance": round(accepted_in / n, 4),
         "ood_rejection_rate": round(rejected / n_ood, 4),
         "precision": round(p, 4),
         "recall": round(r, 4),
         "f1": round(f, 4),
-        "mean_ms": round(float(np.mean(times)), 2),
+        "mean_ms": round(prepared["mean_ms"], 2),
     }
 
 
 def main():
     results = []
+    prepared_by_config = {}
     for label, path in CONFIGS:
         model, payload = build(path)
         if model is None:
             continue
         print(f"\n=== {label} ===")
+        prepared = prepare_evaluation(model, payload)
+        prepared_by_config[label] = prepared
         for th in THRESHOLDS:
-            m = evaluate(model, payload, th)
+            m = evaluate(prepared, th)
             print(
                 f"  th={th:.2f}  top1={m['top1_accuracy']:.3f}  "
                 f"in={m['in_domain_acceptance']:.3f}  "
@@ -159,6 +175,52 @@ def main():
                 f"F1={m['f1']:.3f}  ms={m['mean_ms']:.1f}"
             )
             results.append({"config": label, "threshold": th, **m})
+
+    base_label = CONFIGS[0][0]
+    tuned_label = CONFIGS[1][0]
+    if base_label in prepared_by_config and tuned_label in prepared_by_config:
+        baseline = prepared_by_config[base_label]
+        fine_tuned = prepared_by_config[tuned_label]
+        baseline_correct = np.array([
+            row["answer"] == baseline["train_rows"][index]["answer"]
+            for row, index in zip(
+                baseline["test_rows"], baseline["best_indices"]
+            )
+        ])
+        fine_tuned_correct = np.array([
+            row["answer"] == fine_tuned["train_rows"][index]["answer"]
+            for row, index in zip(
+                fine_tuned["test_rows"], fine_tuned["best_indices"]
+            )
+        ])
+        comparisons = (
+            ("fine-tuned correct; baseline wrong", ~baseline_correct & fine_tuned_correct),
+            ("baseline correct; fine-tuned wrong", baseline_correct & ~fine_tuned_correct),
+            ("both wrong", ~baseline_correct & ~fine_tuned_correct),
+        )
+        print("\n=== Representative app-aligned retrieval examples ===")
+        for title, mask in comparisons:
+            matches = np.flatnonzero(mask)
+            print(f"{title}: {len(matches)} cases")
+            if len(matches):
+                index = int(matches[0])
+                query = fine_tuned["test_rows"][index]["question"]
+                print(f"  query: {query}")
+                for label, prepared in (
+                    (base_label, baseline),
+                    (tuned_label, fine_tuned),
+                ):
+                    best_index = int(prepared["best_indices"][index])
+                    matched_question = prepared["train_rows"][best_index]["question"]
+                    score = float(prepared["best_scores"][index])
+                    correct = (
+                        prepared["train_rows"][best_index]["answer"]
+                        == prepared["test_rows"][index]["answer"]
+                    )
+                    print(
+                        f"  {label}: matched_question={matched_question!r}; "
+                        f"score={score:.4f}; exact_answer_match={correct}"
+                    )
 
     out = BASE_DIR / "eval_results.csv"
     with open(out, "w", newline="", encoding="utf-8") as f:
