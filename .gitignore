@@ -16,13 +16,13 @@ __pycache__/
 checkpoints/
 outputs/
 
-# Dataset files: keep only the CSV needed by the deployed app
+# Dataset files: keep only the CSV needed by the app
 datasets/
 data/*
 !data/qa_train.csv
 
-# Ignore large model files
-models/agri-minilm/model.safetensors
+# Keep large fine-tuned weights out of the app repository. Store them in a
+# separate model repository and configure EMBEDDER_PATH for the app.
 *.safetensors
 
 # Keep validation, test and diagnostic datasets private/untracked

@@ -3,6 +3,7 @@
 
 import pytest
 
+import app as app_module
 from app import app
 
 
@@ -25,6 +26,23 @@ def test_health(client):
     assert data["knowledge_base_size"] > 0
     assert data["embedder"]
     assert isinstance(data["similarity_threshold"], (int, float))
+
+
+def test_configured_model_repository_is_loaded(monkeypatch):
+    loaded = {}
+
+    def fake_sentence_transformer(model_name):
+        loaded["model_name"] = model_name
+        return object()
+
+    monkeypatch.setenv("EMBEDDER_PATH", "example-account/agri-minilm")
+    monkeypatch.setattr(app_module, "SentenceTransformer", fake_sentence_transformer)
+
+    model, tag = app_module._resolve_embedder()
+
+    assert model is not None
+    assert loaded["model_name"] == "example-account/agri-minilm"
+    assert tag == "configured:example-account/agri-minilm"
 
 
 def test_chat_page_loads_script(client):

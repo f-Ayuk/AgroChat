@@ -65,9 +65,9 @@ Two configurations were compared across thresholds 0.30 to 0.60:
 
 ## 8. Deployment
 
-The system is a Flask web app served by Gunicorn inside a Docker container. It is deployed on **Hugging Face Spaces** using the Docker SDK on port 7860. Hugging Face Spaces is chosen because its free CPU tier provides enough memory for PyTorch and the embedder. Render's free tier (512 MB) is too small.
+The application is a Streamlit app deployed on **Streamlit Community Cloud**. Its fine-tuned sentence embedder is stored separately in a model repository and loaded by repository ID from the app's secrets. The model weights are kept out of the application source repository to reduce its size. If no fine-tuned model is configured, the app uses the pretrained MiniLM embedder.
 
-The web interface has a chat box, suggested questions, and a visible similarity score so users can see how confident the system is. The `/api/health` endpoint reports which embedder is loaded and the active threshold.
+The web interface provides a question form and retains the conversation in the current Streamlit session. Responses show the similarity score; the Flask API and `/api/health` endpoint remain available when running the Flask application directly.
 
 ## 9. Limitations and Future Work
 

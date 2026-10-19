@@ -44,13 +44,20 @@ QUESTIONS = [r["question"] for r in knowledge]
 
 # ------------------------------------------------------------------ model
 def _resolve_embedder() -> tuple[SentenceTransformer, str]:
-    env_path = os.getenv("EMBEDDER_PATH")
-    if env_path and Path(env_path).exists():
-        return SentenceTransformer(env_path), f"finetuned:{env_path}"
-    local = BASE_DIR / "models" / "agri-minilm"
-    if local.exists():
-        return SentenceTransformer(str(local)), f"finetuned:{local}"
-    return SentenceTransformer(MODEL_NAME), f"baseline:{MODEL_NAME}"
+    configured_model = os.getenv("EMBEDDER_PATH")
+    if configured_model:
+        return (
+            SentenceTransformer(configured_model),
+            f"configured:{configured_model}",
+        )
+
+    model_path = Path(MODEL_NAME)
+    tag = (
+        f"finetuned:{MODEL_NAME}"
+        if model_path.is_dir()
+        else f"baseline:{MODEL_NAME}"
+    )
+    return SentenceTransformer(MODEL_NAME), tag
 
 
 model, EMBEDDER_TAG = _resolve_embedder()

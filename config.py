@@ -13,9 +13,15 @@ BASE_DIR = Path(__file__).resolve().parent
 # Fine-tuned model directory.
 FINETUNED_MODEL_PATH = BASE_DIR / "models" / "agri-minilm"
 
-# Use the fine-tuned model when its directory exists.
+# Ignore the model folder unless it contains weights; the repository may
+# intentionally omit these large files because they are stored separately.
+has_local_weights = any(FINETUNED_MODEL_PATH.glob("*.safetensors")) or (
+    FINETUNED_MODEL_PATH / "pytorch_model.bin"
+).is_file()
+
+# Use the fine-tuned model when local weights are available.
 # Otherwise, fall back to the pretrained MiniLM model.
-if FINETUNED_MODEL_PATH.is_dir():
+if FINETUNED_MODEL_PATH.is_dir() and has_local_weights:
     MODEL_NAME = str(FINETUNED_MODEL_PATH)
 else:
     MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"

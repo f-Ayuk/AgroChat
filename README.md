@@ -1,101 +1,109 @@
-For a Hugging Face Docker Space, start the README with this configuration:
-
----
-title: AgroChat
-colorFrom: green
-colorTo: yellow
-sdk: docker
-app_port: 7860
----
-
 # AgroChat — Agriculture Question Answering
 
-AgroChat answers English-language questions about farming: soil, irrigation, crop health, pests, fertilisers, harvesting, storage, seeds, and weeds. It retrieves the closest answer from a curated agriculture knowledge base, and rejects questions that are not about agriculture.
-
-## Live demo
-
-- Web app: **`<paste your Hugging Face Space URL here>`**
-- Health check: `GET /api/health`
+AgroChat answers English-language questions about farming: soil, irrigation, crop health, pests, fertilisers, harvesting, storage, seeds, and weeds. It retrieves the closest answer from a curated agriculture knowledge base and uses a fallback when no result is sufficiently similar.
 
 ## How it works
 
-1. A **sentence embedder** turns your question into a vector.
-2. That vector is compared with every stored question vector using **cosine similarity**.
-3. If the best score is above a **threshold**, the matching answer is returned.
-4. Otherwise, a fallback message explains that the question is outside the agriculture knowledge base.
+1. A sentence embedder turns the user question into a vector.
+2. The vector is compared with stored agriculture questions using cosine similarity.
+3. If the best score is above the configured threshold, the associated answer is returned.
+4. Otherwise, AgroChat returns a fallback message.
 
-The embedder is **fine-tuned** on 25,410 agriculture QA pairs from the public [`talhakk/agriculture-qa`](https://huggingface.co/datasets/talhakk/agriculture-qa) dataset. This fine-tuning teaches the model that farmer phrasing ("wilt", "yellow leaves") is close in meaning to stored answers ("water stress", "nutrient deficiency"), even when the wording is different.
+The application runs on **Streamlit Community Cloud**. The fine-tuned model weights are stored separately from the application source; the app loads them from a model repository when configured. If no fine-tuned model is configured, it uses the pretrained `sentence-transformers/all-MiniLM-L6-v2` model.
 
 ## Dataset
 
-- **Source**: `talhakk/agriculture-qa` (Hugging Face, Apache 2.0).
+- **Source**: `talhakk/agriculture-qa` (Apache 2.0).
 - **Size**: 25,410 question–answer pairs; English.
-- **Split**: 80 % train / 10 % validation / 10 % test, seed 42.
-- **Content**: general agriculture (irrigation, fertilisation, soil science, climate, sustainable farming) and crop-specific QA for rice, wheat, tomato, okra, potato, onion, sugarcane, cotton, sunflower, and pulses.
+- **Split**: 80% train / 10% validation / 10% test, seed 42.
+- **Content**: general agriculture and crop-specific QA for rice, wheat, tomato, okra, potato, onion, sugarcane, cotton, sunflower, and pulses.
 
-## Reproducing the project
+## Run locally
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# 1. Download data and build splits
-python scripts/prepare_data.py
-
-# 2. Fine-tune the embedder (CPU is fine; ~15–30 min)
-python scripts/train_embedder.py --output models/agri-minilm
-
-# 3. Evaluate baseline vs. fine-tuned across thresholds
-python evaluate.py
-
-# 4. Run tests
-pytest -v
-
-# 5. Start the web app
-python app.py            # http://127.0.0.1:7860
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -r requirements.txt
+py -m streamlit run streamlit_app.py
 ```
 
-If `models/agri-minilm` is missing, `app.py` falls back to the pretrained `all-MiniLM-L6-v2`, so the site still runs — but with lower retrieval accuracy. The `/api/health` endpoint reports which embedder is active.
+Streamlit prints a local URL, usually `http://localhost:8501`.
+
+To train the model or reproduce the evaluation, first install the project requirements and prepare the data:
+
+```powershell
+py scripts/prepare_data.py
+py scripts/train_embedder.py --output models/agri-minilm
+py evaluate.py
+py -m pytest -v
+```
+
+The preparation step downloads the dataset and writes the train, validation, and test splits. If you only need to run the app, `data/qa_train.csv` is already included.
+
+## Deploy the app on Streamlit Community Cloud
+
+### 1. Put the application code on GitHub
+
+Push this project to a GitHub repository that you can access from Streamlit Community Cloud. Keep `data/qa_train.csv` in the repository; it is required at startup. The fine-tuned `*.safetensors` weights are ignored by `.gitignore` so that large model files do not get added to the app repository.
+
+### 2. Store the fine-tuned weights separately (recommended)
+
+If you have not trained the model yet, run `py scripts/train_embedder.py --output models/agri-minilm` locally. Then create a **model repository** in the Hugging Face Hub and upload the contents of `models/agri-minilm` to it, including the model configuration, tokenizer files, and weight files. This repository stores model files only; it does not host the AgroChat application.
+
+Make the model repository public if you do not need access controls. Copy its repository ID, such as `your-account/agri-minilm`. For a private model repository, create a read token and keep it in Streamlit secrets; never commit the token to GitHub.
+
+### 3. Create the Streamlit app
+
+1. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/).
+2. Create an app and connect the GitHub repository.
+3. Select the branch and set **Main file path** to `streamlit_app.py`.
+4. Deploy. The first startup installs dependencies, downloads the configured model, and encodes the knowledge-base questions for retrieval. It can take several minutes, depending on the available CPU and memory.
+
+### 4. Configure app secrets
+
+In the deployed app's **Settings → Secrets**, set the model repository ID:
+
+```toml
+EMBEDDER_PATH = "your-account/agri-minilm"
+```
+
+For a private model, also add a Hugging Face read token:
+
+```toml
+HF_TOKEN = "hf_your_read_token"
+```
+
+Do not add `HF_TOKEN` for a public model. You may optionally override the retrieval threshold:
+
+```toml
+SIMILARITY_THRESHOLD = "0.45"
+```
+
+The app reads these settings before loading the model. `EMBEDDER_PATH` may also be a local model directory when running locally. If it is unset, the app uses local fine-tuned weights when available, otherwise it falls back to the pretrained MiniLM model.
 
 ## Project structure
 
 ```
-├── app.py                  # Flask app + retrieval pipeline
-├── config.py               # shared constants
-├── evaluate.py             # baseline vs. fine-tuned × threshold sweep
-├── test_app.py             # pytest suite
+├── app.py                  # Flask API and retrieval pipeline
+├── streamlit_app.py        # Streamlit user interface
+├── config.py               # shared model and retrieval settings
+├── evaluate.py             # baseline vs. fine-tuned threshold evaluation
+├── test_app.py             # application tests
 ├── scripts/
-│   ├── prepare_data.py     # talhakk → train/val/test CSVs
-│   └── train_embedder.py   # fine-tune with MultipleNegativesRankingLoss
+│   ├── prepare_data.py     # prepare train/validation/test CSVs
+│   └── train_embedder.py   # fine-tune the sentence embedder
 ├── data/
-│   ├── qa_train.csv
-│   ├── qa_val.csv
-│   ├── qa_test.csv
-│   └── qa_curated_diagnostic.csv
-├── models/                 # gitignored; produced by train_embedder.py
-├── templates/index.html
-├── static/{style.css,style.js}
-├── Dockerfile
+│   └── qa_train.csv        # deployed knowledge base
+├── models/agri-minilm/     # model config; large weights stored separately
+├── templates/ and static/  # Flask interface assets
 └── requirements.txt
 ```
 
-## Deploying to Hugging Face Spaces
-
-1. Create a new Space at [huggingface.co/new-space](https://huggingface.co/new-space). Choose **Docker** as the SDK and **Blank** as the template.
-2. Push this repository to the Space repository.
-3. The Space will build from the `Dockerfile` and serve the Flask app on port **7860**.
-4. To use the fine-tuned model, either:
-    - run `train_embedder.py` locally, then upload `models/agri-minilm` to the Space (remove it from `.gitignore` first), or
-    - push the model to the Hugging Face Hub and set the Space variable `EMBEDDER_PATH=your-username/agri-minilm`.
-5. Set the variable `SIMILARITY_THRESHOLD` in the Space settings if you tuned a different threshold.
-
-Render's free tier provides 512 MB RAM, which is **not enough** for PyTorch and the sentence embedder. Use Hugging Face Spaces for the free Docker deployment.
-
 ## Limitations
 
-- **Small comparison set**: the evaluation uses a 10 % held-out slice of talhakk, not an independently curated farmer-query benchmark.
-- **Threshold is a heuristic**: a fixed cosine cut-off cannot separate every agriculture-adjacent question from every out-of-domain question. A supervised domain classifier is discussed as future work.
-- **Answer style**: talhakk answers are expert-style and sometimes generic; a deployed system should add local extension guidance.
+- **Small comparison set**: evaluation uses a held-out slice of the source dataset, not an independently curated farmer-query benchmark.
+- **Threshold is a heuristic**: a fixed cosine cut-off cannot separate every agriculture-adjacent question from every out-of-domain question.
+- **Answer style**: source answers can be generic; local agricultural guidance should be consulted.
 - **English only**: the system does not handle other languages.
 - **Advice disclaimer**: educational information only. Confirm pesticide and fertiliser decisions with a local agricultural adviser.
 
