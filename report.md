@@ -2,7 +2,7 @@
 
 
 GitHub Repository: https://github.com/f-Ayuk/AgroChat
-Demo Video: Link to your 7–10 minute demonstration video.
+Demo Video: https://www.loom.com/share/0ede7f7165ed4d0c8f38b57b84e2a208.
 Live System: https://agrochat-blifo2jrrhz3yxzba3jtep.streamlit.app/#agro-chat
 
 
