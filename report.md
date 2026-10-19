@@ -1,7 +1,7 @@
 # AgroChat: Agriculture Question Answering with Sentence Embeddings
 
 
-GitHub Repository: Link to the repository containing your source code, README, and project resources.
+GitHub Repository: https://github.com/f-Ayuk/AgroChat
 Demo Video: Link to your 7–10 minute demonstration video.
 Live System: Link to your deployed web application, if the system has been deployed and is publicly available
 at the time of submission.
