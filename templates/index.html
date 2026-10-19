@@ -10,24 +10,9 @@
             href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header class="header">
-        <a class="brand" href="/">
-            <span class="brand-icon">🌱</span>
-            <span>AgroChat</span>
-        </a>
-        <span class="status"><span></span> Agriculture assistant</span>
-    </header>
+    {% include "_branding.html" %}
 
     <main class="container">
-        <section class="welcome">
-            <p class="eyebrow">YOUR FARMING KNOWLEDGE PARTNER</p>
-            <h1>Grow smarter, <span>farm better.</span></h1>
-            <p>
-                Ask questions about crop production, soil health,
-                irrigation, pest management and harvesting.
-            </p>
-        </section>
-
         <section class="chat-card" aria-label="Agriculture chatbot">
             <div class="chat-heading">
                 <div class="avatar">🌿</div>

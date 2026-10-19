@@ -75,9 +75,17 @@ The configured `EMBEDDER_PATH` must name a model directory inside the app's GitH
 ├── data/
 │   └── qa_train.csv        # deployed knowledge base
 ├── models/agri-minilm/     # fine-tuned model and weights, committed to GitHub
-├── templates/ and static/  # Flask interface assets
+├── templates/              # Flask page and shared branding partial
+├── static/                 # shared stylesheet and Flask chat script
 └── requirements.txt
 ```
+
+Both frontends use `templates/_branding.html` for the header and welcome
+section, and Streamlit applies the shared `static/style.css`. Streamlit-native
+form controls submit questions directly to the shared Python retrieval
+function. `templates/index.html` and `static/style.js` provide the separate
+Flask page and its browser-side API calls; Streamlit does not execute that
+Flask-specific JavaScript.
 
 ## Limitations
 
